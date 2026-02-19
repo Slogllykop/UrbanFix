@@ -31,7 +31,6 @@ export const metadata: Metadata = {
     "community",
   ],
   authors: [{ name: "UrbanFix Team" }],
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

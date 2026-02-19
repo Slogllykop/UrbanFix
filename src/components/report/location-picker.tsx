@@ -1,14 +1,12 @@
 "use client";
 
-import { IconCurrentLocation, IconMapPin } from "@tabler/icons-react";
+import { IconMapPin } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/lib/constants";
 
 interface Location {
   lat: number;
   lng: number;
-  address?: string;
 }
 
 interface LocationPickerProps {
@@ -16,13 +14,14 @@ interface LocationPickerProps {
   onLocationSelect: (location: Location) => void;
 }
 
-// Declare google maps types
 declare global {
   interface Window {
     google: typeof google;
-    initMap: () => void;
   }
 }
+
+const IP_LOCATION_ENDPOINT = "/api/ip-location";
+const GOOGLE_MAPS_SCRIPT_ID = "google-maps-javascript-api";
 
 export function LocationPicker({
   initialPosition,
@@ -30,13 +29,22 @@ export function LocationPicker({
 }: LocationPickerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
-  const markerRef = useRef<google.maps.Marker | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const onLocationSelectRef = useRef(onLocationSelect);
+  const hasAppliedInitialCenterRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    onLocationSelectRef.current = onLocationSelect;
+  }, [onLocationSelect]);
+
+  const selectLocation = useCallback((location: Location) => {
+    setCurrentLocation(location);
+    onLocationSelectRef.current(location);
+  }, []);
 
   // Load Google Maps script
   useEffect(() => {
@@ -48,51 +56,68 @@ export function LocationPicker({
       return;
     }
 
-    // Check if already loaded
     if (window.google?.maps) {
       setIsLoaded(true);
       setIsLoading(false);
       return;
     }
 
-    // Load script
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
+    const handleLoad = () => {
       setIsLoaded(true);
       setIsLoading(false);
     };
-    script.onerror = () => {
+
+    const handleError = () => {
       console.error("Failed to load Google Maps");
       setIsLoading(false);
     };
 
+    const existingScript = document.getElementById(
+      GOOGLE_MAPS_SCRIPT_ID,
+    ) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoad);
+      existingScript.addEventListener("error", handleError);
+      return () => {
+        existingScript.removeEventListener("load", handleLoad);
+        existingScript.removeEventListener("error", handleError);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.id = GOOGLE_MAPS_SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = handleLoad;
+    script.onerror = handleError;
+
     document.head.appendChild(script);
 
     return () => {
-      // Don't remove script on unmount to allow caching
+      script.onload = null;
+      script.onerror = null;
     };
   }, []);
 
-  // Initialize map
+  // Initialize map once
   useEffect(() => {
-    if (!isLoaded || !mapRef.current) return;
+    if (!isLoaded || !mapRef.current || googleMapRef.current) return;
 
     const center = initialPosition || DEFAULT_MAP_CENTER;
 
-    // Create map
     googleMapRef.current = new google.maps.Map(mapRef.current, {
       center,
       zoom: DEFAULT_MAP_ZOOM,
+      gestureHandling: "greedy",
+      clickableIcons: false,
       disableDefaultUI: true,
-      zoomControl: true,
+      zoomControl: false,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
       styles: [
-        // Dark mode styles
         { elementType: "geometry", stylers: [{ color: "#1d1d1d" }] },
         { elementType: "labels.text.stroke", stylers: [{ color: "#1d1d1d" }] },
         { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
@@ -111,126 +136,100 @@ export function LocationPicker({
           elementType: "geometry",
           stylers: [{ color: "#1a1a1a" }],
         },
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "transit",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }],
+        },
       ],
     });
 
-    // Create marker
-    markerRef.current = new google.maps.Marker({
-      position: center,
-      map: googleMapRef.current,
-      draggable: true,
-      animation: google.maps.Animation.DROP,
+    selectLocation(center);
+
+    const syncLocationToCenter = () => {
+      const mapCenter = googleMapRef.current?.getCenter();
+      if (!mapCenter) return;
+
+      selectLocation({
+        lat: mapCenter.lat(),
+        lng: mapCenter.lng(),
+      });
+    };
+
+    googleMapRef.current.addListener("dragstart", () => {
+      hasUserInteractedRef.current = true;
+    });
+    googleMapRef.current.addListener("zoom_changed", () => {
+      hasUserInteractedRef.current = true;
     });
 
-    // Create geocoder
-    geocoderRef.current = new google.maps.Geocoder();
+    // Uber-style: map moves under a fixed center pin.
+    googleMapRef.current.addListener("idle", syncLocationToCenter);
 
-    // Get initial address
-    geocodeLocation(center);
+    // Intentionally no click-to-pan behavior: user positions via map drag only.
+  }, [isLoaded, initialPosition, selectLocation]);
 
-    // Handle marker drag
-    markerRef.current.addListener("dragend", () => {
-      const position = markerRef.current?.getPosition();
-      if (position) {
-        const location = {
-          lat: position.lat(),
-          lng: position.lng(),
-        };
-        geocodeLocation(location);
-      }
-    });
-
-    // Handle map click - move marker
-    googleMapRef.current.addListener(
-      "click",
-      (e: google.maps.MapMouseEvent) => {
-        if (e.latLng && markerRef.current) {
-          markerRef.current.setPosition(e.latLng);
-          const location = {
-            lat: e.latLng.lat(),
-            lng: e.latLng.lng(),
-          };
-          geocodeLocation(location);
-        }
-      },
-    );
-  }, [isLoaded, initialPosition, geocodeLocation]);
-
-  // Geocode location to get address
-  const geocodeLocation = useCallback(
-    async (location: { lat: number; lng: number }) => {
-      if (!geocoderRef.current) return;
-
-      try {
-        const response = await geocoderRef.current.geocode({
-          location: { lat: location.lat, lng: location.lng },
-        });
-
-        const address = response.results[0]?.formatted_address;
-        const newLocation: Location = {
-          ...location,
-          address,
-        };
-
-        setCurrentLocation(newLocation);
-        onLocationSelect(newLocation);
-      } catch (error) {
-        console.error("Geocoding error:", error);
-        const newLocation: Location = { ...location };
-        setCurrentLocation(newLocation);
-        onLocationSelect(newLocation);
-      }
-    },
-    [onLocationSelect],
-  );
-
-  // Get current location
-  const getCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      console.error("Geolocation not supported");
+  // Approximate initial position using IP geolocation (no reverse geocoding).
+  useEffect(() => {
+    if (!isLoaded || initialPosition || hasAppliedInitialCenterRef.current) {
       return;
     }
 
-    setIsLocating(true);
+    hasAppliedInitialCenterRef.current = true;
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const location = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+    const controller = new AbortController();
+
+    const detectFromIp = async () => {
+      try {
+        const response = await fetch(IP_LOCATION_ENDPOINT, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as {
+          lat?: number;
+          lng?: number;
         };
 
-        // Update map and marker
-        if (googleMapRef.current && markerRef.current) {
-          googleMapRef.current.panTo(location);
-          googleMapRef.current.setZoom(17);
-          markerRef.current.setPosition(location);
-
-          // Add bounce animation
-          markerRef.current.setAnimation(google.maps.Animation.BOUNCE);
-          setTimeout(() => {
-            markerRef.current?.setAnimation(null);
-          }, 1500);
+        if (typeof data.lat !== "number" || typeof data.lng !== "number") {
+          return;
         }
 
-        geocodeLocation(location);
-        setIsLocating(false);
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        setIsLocating(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
-  }, [geocodeLocation]);
+        const ipLocation = {
+          lat: data.lat,
+          lng: data.lng,
+        };
+
+        // Never override once user has started placing location manually.
+        if (!hasUserInteractedRef.current && googleMapRef.current) {
+          googleMapRef.current.panTo(ipLocation);
+          googleMapRef.current.setZoom(DEFAULT_MAP_ZOOM);
+          selectLocation(ipLocation);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        // Fallback to default center silently for local dev resilience.
+      }
+    };
+
+    void detectFromIp();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isLoaded, initialPosition, selectLocation]);
 
   if (isLoading) {
     return (
-      <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
+      <div className="h-[clamp(320px,52svh,560px)] rounded-lg bg-muted flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading map...</p>
@@ -241,7 +240,7 @@ export function LocationPicker({
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
-      <div className="aspect-video rounded-lg bg-muted flex items-center justify-center p-4">
+      <div className="h-[clamp(320px,52svh,560px)] rounded-lg bg-muted flex items-center justify-center p-4">
         <p className="text-sm text-muted-foreground text-center">
           Google Maps API key not configured. Please add
           NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your environment variables.
@@ -252,50 +251,29 @@ export function LocationPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Map container */}
-      <div className="relative aspect-video overflow-hidden rounded-lg">
+      <div className="relative h-[clamp(320px,52svh,560px)] overflow-hidden rounded-lg">
         <div ref={mapRef} className="absolute inset-0" />
-
-        {/* Current location button */}
-        <Button
-          size="icon"
-          variant="secondary"
-          className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg"
-          onClick={getCurrentLocation}
-          disabled={isLocating}
-        >
-          {isLocating ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          ) : (
-            <IconCurrentLocation className="h-5 w-5" />
-          )}
-          <span className="sr-only">Use current location</span>
-        </Button>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
+          <div className="rounded-full bg-background/90 p-1 shadow-md backdrop-blur">
+            <IconMapPin className="h-7 w-7 text-primary" />
+          </div>
+        </div>
       </div>
 
-      {/* Selected location display */}
       {currentLocation && (
         <div className="flex items-start gap-2 rounded-lg bg-muted p-3">
           <IconMapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">Selected Location</p>
-            {currentLocation.address ? (
-              <p className="text-xs text-muted-foreground truncate">
-                {currentLocation.address}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {currentLocation.lat.toFixed(6)},{" "}
-                {currentLocation.lng.toFixed(6)}
-              </p>
-            )}
+            <p className="text-sm font-medium">Selected Coordinates</p>
+            <p className="text-xs text-muted-foreground">
+              {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Instructions */}
       <p className="text-xs text-muted-foreground text-center">
-        Drag the pin or tap on the map to select the exact location
+        Move the map to place the pin at the exact issue location
       </p>
     </div>
   );

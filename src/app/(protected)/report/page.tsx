@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -40,7 +40,6 @@ type ReportFormValues = z.infer<typeof reportSchema>;
 interface Location {
   lat: number;
   lng: number;
-  address?: string;
 }
 
 type Step = "camera" | "location" | "details";
@@ -51,6 +50,7 @@ export default function ReportPage() {
   const [currentStep, setCurrentStep] = useState<Step>("camera");
   const [capturedImage, setCapturedImage] = useState<Blob | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
+  const [isViewingPhoto, setIsViewingPhoto] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null,
   );
@@ -73,6 +73,7 @@ export default function ReportPage() {
   const handleImageCapture = (blob: Blob) => {
     setCapturedImage(blob);
     setCapturedImageUrl(URL.createObjectURL(blob));
+    setIsViewingPhoto(false);
     setCurrentStep("location");
     toast.success("Photo captured!");
   };
@@ -84,9 +85,9 @@ export default function ReportPage() {
   };
 
   // Handle location selection
-  const handleLocationSelect = (location: Location) => {
+  const handleLocationSelect = useCallback((location: Location) => {
     setSelectedLocation(location);
-  };
+  }, []);
 
   const confirmLocation = () => {
     if (!selectedLocation) {
@@ -131,8 +132,10 @@ export default function ReportPage() {
   // Go back to previous step
   const goBack = () => {
     if (currentStep === "location") {
+      setIsViewingPhoto(false);
       setCurrentStep("camera");
     } else if (currentStep === "details") {
+      setIsViewingPhoto(false);
       setCurrentStep("location");
     }
   };
@@ -240,31 +243,44 @@ export default function ReportPage() {
 
       {currentStep === "location" && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-lg">Select Location</CardTitle>
+            {capturedImageUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsViewingPhoto((prev) => !prev)}
+              >
+                {isViewingPhoto ? "Close Photo" : "View Photo"}
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Preview of captured image */}
-            {capturedImageUrl && (
-              <div className="relative aspect-video overflow-hidden rounded-lg mb-4">
+            {capturedImageUrl && isViewingPhoto && (
+              <div className="relative min-h-[60dvh] overflow-hidden rounded-lg bg-muted">
                 <img
                   src={capturedImageUrl}
                   alt="Captured issue"
-                  className="w-full h-full object-cover"
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
             )}
 
-            <LocationPicker onLocationSelect={handleLocationSelect} />
+            {!isViewingPhoto && (
+              <>
+                <LocationPicker onLocationSelect={handleLocationSelect} />
 
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={confirmLocation}
-              disabled={!selectedLocation}
-            >
-              Confirm Location
-            </Button>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={confirmLocation}
+                  disabled={!selectedLocation}
+                >
+                  Confirm Location
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -291,8 +307,7 @@ export default function ReportPage() {
               <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
                 <span className="font-medium">Location: </span>
                 <span className="text-muted-foreground">
-                  {selectedLocation.address ||
-                    `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`}
+                  {`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`}
                 </span>
               </div>
             )}

@@ -4,8 +4,10 @@ import type { User as AuthUser, Session } from "@supabase/supabase-js";
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -27,33 +29,132 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function isAbortLikeError(error: unknown): boolean {
+  if (typeof error === "string") {
+    return error.includes("AbortError") || error.includes("signal is aborted");
+  }
+
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+  if (error instanceof Error) {
+    return (
+      error.name === "AbortError" ||
+      error.message.includes("AbortError") ||
+      error.message.includes("signal is aborted")
+    );
+  }
+  return false;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Fetch user profile from database
-  const fetchUserProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
+  const fetchUserProfile = useCallback(
+    async (currentAuthUser: AuthUser) => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", currentAuthUser.id)
+          .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching user profile:", error);
-      return null;
-    }
+        if (error) {
+          if (isAbortLikeError(error.message)) {
+            return null;
+          }
 
-    return data;
-  };
+          console.error("Error fetching user profile:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+          return null;
+        }
+
+        if (data) {
+          return data;
+        }
+
+        // Self-heal missing profile rows (e.g. older users created before trigger existed).
+        if (!currentAuthUser.email) {
+          console.error("Cannot create user profile: missing auth email", {
+            userId: currentAuthUser.id,
+          });
+          return null;
+        }
+
+        const authType: User["auth_type"] =
+          currentAuthUser.app_metadata?.provider === "google"
+            ? "oauth"
+            : "email";
+
+        const { data: createdProfile, error: createError } = await supabase
+          .from("users")
+          .insert({
+            id: currentAuthUser.id,
+            email: currentAuthUser.email,
+            full_name:
+              (currentAuthUser.user_metadata?.full_name as
+                | string
+                | undefined) ??
+              (currentAuthUser.user_metadata?.name as string | undefined) ??
+              null,
+            avatar_url:
+              (currentAuthUser.user_metadata?.avatar_url as
+                | string
+                | undefined) ?? null,
+            role: "user",
+            auth_type: authType,
+          })
+          .select("*")
+          .single();
+
+        if (!createError) {
+          return createdProfile;
+        }
+
+        // If creation failed due race/duplicate, retry fetch once.
+        const { data: retriedProfile, error: retryError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", currentAuthUser.id)
+          .maybeSingle();
+
+        if (retriedProfile) {
+          return retriedProfile;
+        }
+
+        console.error("Error creating missing user profile:", {
+          message: createError.message,
+          code: createError.code,
+          details: createError.details,
+          hint: createError.hint,
+          retryMessage: retryError?.message,
+        });
+
+        return null;
+      } catch (error) {
+        if (isAbortLikeError(error)) {
+          return null;
+        }
+        console.error("Unexpected profile fetch error:", error);
+        return null;
+      }
+    },
+    [supabase],
+  );
 
   // Refresh user data
   const refreshUser = async () => {
     if (authUser) {
-      const profile = await fetchUserProfile(authUser.id);
+      const profile = await fetchUserProfile(authUser);
       setUser(profile);
     }
   };
@@ -70,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          const profile = await fetchUserProfile(initialSession.user.id);
+          const profile = await fetchUserProfile(initialSession.user);
           setUser(profile);
         }
       } catch (error) {
@@ -86,14 +187,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setSession(newSession);
-      setAuthUser(newSession?.user ?? null);
+      try {
+        setSession(newSession);
+        setAuthUser(newSession?.user ?? null);
 
-      if (newSession?.user) {
-        const profile = await fetchUserProfile(newSession.user.id);
-        setUser(profile);
-      } else {
-        setUser(null);
+        if (newSession?.user) {
+          const profile = await fetchUserProfile(newSession.user);
+          setUser(profile);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        if (!isAbortLikeError(error)) {
+          console.error("Auth state change error:", error);
+        }
       }
 
       // Handle specific events
@@ -105,11 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [
-    fetchUserProfile,
-    supabase.auth.getSession,
-    supabase.auth.onAuthStateChange,
-  ]);
+  }, [fetchUserProfile, supabase]);
 
   // Sign in with Google OAuth
   const signInWithGoogle = async () => {
