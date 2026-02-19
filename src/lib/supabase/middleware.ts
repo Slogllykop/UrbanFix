@@ -7,6 +7,14 @@ const PUBLIC_ROUTES = ["/login", "/ngo-login", "/auth/callback"];
 const USER_ONLY_ROUTES = ["/report"];
 const NGO_ONLY_ROUTES = ["/dashboard"];
 const PROTECTED_ROUTES = ["/", "/issue", "/profile"];
+const MOBILE_ONLY_UPLOAD_ROUTE = "/report";
+const MOBILE_REQUIRED_QUERY = "mobile_required";
+const MOBILE_UA_REGEX =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i;
+
+function isMobileUserAgent(userAgent: string): boolean {
+  return MOBILE_UA_REGEX.test(userAgent);
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -44,6 +52,18 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  const hasOAuthParams =
+    request.nextUrl.searchParams.has("code") ||
+    request.nextUrl.searchParams.has("error");
+
+  // OAuth can return to base origin (/) when redirect allowlists are host-only.
+  // Rewrite it to /auth/callback so we can exchange code server-side without
+  // introducing an extra absolute redirect hop that may normalize to localhost.
+  if (hasOAuthParams && pathname !== "/auth/callback") {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.rewrite(callbackUrl);
+  }
 
   // Check if route is public
   const isPublicRoute = PUBLIC_ROUTES.some(
@@ -103,6 +123,31 @@ export async function updateSession(request: NextRequest) {
     if (isUserOnlyRoute && userRole === "ngo") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  const isMobileOnlyUploadRoute =
+    pathname === MOBILE_ONLY_UPLOAD_ROUTE ||
+    pathname.startsWith(`${MOBILE_ONLY_UPLOAD_ROUTE}/`);
+
+  if (isMobileOnlyUploadRoute) {
+    const url = request.nextUrl.clone();
+    const userAgent = request.headers.get("user-agent") || "";
+    const isMobile = isMobileUserAgent(userAgent);
+    const hasMobileRequiredFlag =
+      request.nextUrl.searchParams.get(MOBILE_REQUIRED_QUERY) === "1";
+
+    // Non-mobile users are redirected with a flag so the page can show
+    // the existing "Mobile Device Required" warning state.
+    if (!isMobile && !hasMobileRequiredFlag) {
+      url.searchParams.set(MOBILE_REQUIRED_QUERY, "1");
+      return NextResponse.redirect(url);
+    }
+
+    // Clean up the query when a mobile user hits the same URL.
+    if (isMobile && hasMobileRequiredFlag) {
+      url.searchParams.delete(MOBILE_REQUIRED_QUERY);
       return NextResponse.redirect(url);
     }
   }

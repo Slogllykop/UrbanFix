@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { getTimeUntilMidnight, isMobileDevice } from "@/lib/utils";
+import { isMobileDevice } from "@/lib/utils";
 
 const reportSchema = z.object({
   title: z
@@ -46,6 +46,7 @@ type Step = "camera" | "location" | "details";
 
 export default function ReportPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [currentStep, setCurrentStep] = useState<Step>("camera");
   const [capturedImage, setCapturedImage] = useState<Blob | null>(null);
@@ -55,6 +56,7 @@ export default function ReportPage() {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMiddlewareMobileRequired = searchParams.get("mobile_required") === "1";
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -141,7 +143,7 @@ export default function ReportPage() {
   };
 
   // Loading state
-  if (isMobile === null) {
+  if (isMobile === null && !isMiddlewareMobileRequired) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -150,9 +152,7 @@ export default function ReportPage() {
   }
 
   // Desktop warning
-  if (!isMobile) {
-    const { hours, minutes } = getTimeUntilMidnight();
-
+  if (isMiddlewareMobileRequired || !isMobile) {
     return (
       <div className="container mx-auto max-w-screen-md px-4 py-12">
         <Card>

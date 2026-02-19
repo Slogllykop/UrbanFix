@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 /* Dark mode only - forced dark theme */
 :root {
@@ -112,4 +113,8 @@ body {
   body {
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
+}
+
+.leaflet-control-attribution {
+  display: none;
 }

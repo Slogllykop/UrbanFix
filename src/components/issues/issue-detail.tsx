@@ -7,6 +7,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import Image from "next/image";
+import { CircleMarker, MapContainer, TileLayer } from "react-leaflet";
 import { VoteButtons } from "@/components/issues/vote-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,9 @@ interface IssueDetailProps {
   onMarkAddressed?: () => void;
   canMarkAddressed?: boolean;
 }
+
+const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION = "&copy; OpenStreetMap contributors";
 
 export function IssueDetail({
   issue,
@@ -123,21 +127,33 @@ export function IssueDetail({
               {issue.address}
             </p>
           )}
-          {/* Static map preview */}
+          {/* Leaflet map preview */}
           <div className="aspect-video overflow-hidden rounded-lg bg-muted">
-            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-              <img
-                src={`https://maps.googleapis.com/maps/api/staticmap?center=${issue.latitude},${issue.longitude}&zoom=16&size=600x300&markers=color:red%7C${issue.latitude},${issue.longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&style=feature:all%7Celement:geometry%7Ccolor:0x1d1d1d&style=feature:all%7Celement:labels.text.fill%7Ccolor:0x8a8a8a&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626`}
-                alt="Issue location"
-                className="w-full h-full object-cover"
+            <MapContainer
+              center={[issue.latitude, issue.longitude]}
+              zoom={18}
+              zoomControl={false}
+              attributionControl={false}
+              dragging={false}
+              scrollWheelZoom={false}
+              doubleClickZoom={false}
+              boxZoom={false}
+              keyboard={false}
+              touchZoom={false}
+              className="h-full w-full"
+            >
+              <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+              <CircleMarker
+                center={[issue.latitude, issue.longitude]}
+                radius={8}
+                pathOptions={{
+                  color: "#ef4444",
+                  fillColor: "#ef4444",
+                  fillOpacity: 0.9,
+                  weight: 2,
+                }}
               />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">
-                  {issue.latitude.toFixed(6)}, {issue.longitude.toFixed(6)}
-                </p>
-              </div>
-            )}
+            </MapContainer>
           </div>
           {/* Open in maps link */}
           <a
