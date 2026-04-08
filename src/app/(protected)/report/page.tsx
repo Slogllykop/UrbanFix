@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/performance/noImgElement: no optmisation needed */
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,7 +43,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ISSUE_CATEGORIES } from "@/lib/constants";
 import { isMobileDevice } from "@/lib/utils";
 
 const reportSchema = z.object({
@@ -378,11 +386,24 @@ export default function ReportPage() {
                     <FormItem>
                       <FormLabel>Issue Type</FormLabel>
                       <FormControl>
-                        <Select {...field} disabled={isSubmitting}>
-                          <option value="">Select an issue type</option>
-                          <option value="pothole">Pothole</option>
-                          <option value="street_lamp">Street Lamp</option>
-                          <option value="garbage">Garbage</option>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select an issue type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ISSUE_CATEGORIES.map((category) => (
+                              <SelectItem
+                                key={category.value}
+                                value={category.value}
+                              >
+                                {category.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
                         </Select>
                       </FormControl>
                       <FormDescription>
