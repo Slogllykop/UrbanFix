@@ -71,6 +71,7 @@ export default function NgoLoginPage() {
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -89,6 +90,7 @@ export default function NgoLoginPage() {
                       2-3 business days.
                     </CardDescription>
                     <button
+                      type="button"
                       className="mt-4 text-sm text-primary underline underline-offset-4 hover:text-primary/80"
                       onClick={() => {
                         setApplicationSubmitted(false);

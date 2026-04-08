@@ -9,108 +9,15 @@ import {
   type IssueFilters,
   StatusFilter,
 } from "@/components/dashboard/status-filter";
+import { useIssues } from "@/hooks/use-issues";
+import { createClient } from "@/lib/supabase/client";
 import { useUserRole } from "@/providers/auth-provider";
-import type { Issue, IssueStatus } from "@/types/database";
-
-// Dummy data for development
-const DUMMY_ISSUES: Issue[] = [
-  {
-    id: "1",
-    created_by: "user-1",
-    title: "Large pothole on MG Road near railway station",
-    description: "There's a dangerous pothole that's been here for weeks.",
-    image_url:
-      "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&h=600&fit=crop",
-    latitude: 18.5204,
-    longitude: 73.8567,
-    address: "MG Road, Near Railway Station, Pune",
-    status: "verified",
-    ai_verified: true,
-    priority_score: 42,
-    users_reported: 15,
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    addressed_at: null,
-  },
-  {
-    id: "2",
-    created_by: "user-2",
-    title: "Overflowing garbage bin near Shivaji Nagar",
-    description: "Garbage has been piling up for days.",
-    image_url:
-      "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=800&h=600&fit=crop",
-    latitude: 18.5308,
-    longitude: 73.8474,
-    address: "Shivaji Nagar, Pune",
-    status: "verified",
-    ai_verified: true,
-    priority_score: 28,
-    users_reported: 8,
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    addressed_at: null,
-  },
-  {
-    id: "3",
-    created_by: "user-3",
-    title: "Broken streetlight on FC Road",
-    description: "Streetlight has been non-functional for a week.",
-    image_url:
-      "https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=800&h=600&fit=crop",
-    latitude: 18.5196,
-    longitude: 73.8553,
-    address: "FC Road, Deccan Gymkhana, Pune",
-    status: "pending",
-    ai_verified: false,
-    priority_score: 15,
-    users_reported: 5,
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    addressed_at: null,
-  },
-  {
-    id: "4",
-    created_by: "user-4",
-    title: "Water logging on JM Road after rain",
-    description: "Drainage system blocked.",
-    image_url:
-      "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800&h=600&fit=crop",
-    latitude: 18.5167,
-    longitude: 73.8433,
-    address: "JM Road, Pune",
-    status: "addressed",
-    ai_verified: true,
-    priority_score: 33,
-    users_reported: 12,
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    addressed_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "5",
-    created_by: "user-5",
-    title: "Damaged footpath near Koregaon Park",
-    description: "Footpath tiles broken and uneven.",
-    image_url:
-      "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=800&h=600&fit=crop",
-    latitude: 18.5362,
-    longitude: 73.8936,
-    address: "North Main Road, Koregaon Park, Pune",
-    status: "verified",
-    ai_verified: true,
-    priority_score: 19,
-    users_reported: 7,
-    created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    addressed_at: null,
-  },
-];
+import type { IssueStatus } from "@/types/database";
 
 export default function DashboardPage() {
   const router = useRouter();
   const role = useUserRole();
-  const [issues, setIssues] = useState<Issue[]>(DUMMY_ISSUES);
-  const [isLoading, _setIsLoading] = useState(false);
+  const { issues, isLoading, refetch } = useIssues({ status: "all" });
   const [filters, setFilters] = useState<IssueFilters>({
     status: "all",
     search: "",
@@ -129,36 +36,40 @@ export default function DashboardPage() {
     pending: issues.filter((i) => i.status === "pending").length,
     verified: issues.filter((i) => i.status === "verified").length,
     addressed: issues.filter((i) => i.status === "addressed").length,
+    rejected: issues.filter((i) => i.status === "rejected").length,
   };
 
-  // Handle status change
+  // Handle status change — real Supabase update
   const handleStatusChange = useCallback(
     async (issueId: string, newStatus: IssueStatus) => {
+      const supabase = createClient();
+
       try {
-        // Optimistic update
-        setIssues((prev) =>
-          prev.map((issue) =>
-            issue.id === issueId
-              ? {
-                  ...issue,
-                  status: newStatus,
-                  addressed_at:
-                    newStatus === "addressed"
-                      ? new Date().toISOString()
-                      : issue.addressed_at,
-                }
-              : issue,
-          ),
-        );
+        const updates: Record<string, unknown> = {
+          status: newStatus,
+        };
+
+        if (newStatus === "addressed") {
+          updates.addressed_at = new Date().toISOString();
+        }
+
+        const { error } = await supabase
+          .from("issues")
+          // @ts-expect-error: TS issues type update
+          .update(updates)
+          .eq("id", issueId);
+
+        if (error) {
+          throw new Error(error.message);
+        }
 
         toast.success(`Issue marked as ${newStatus}!`);
-
-        // TODO: Update in database
+        refetch();
       } catch (_error) {
         toast.error("Failed to update status");
       }
     },
-    [],
+    [refetch],
   );
 
   // Show loading while checking role
@@ -171,7 +82,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-screen-xl px-4 py-6">
+    <div className="container mx-auto max-w-7xl px-4 py-6">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold">NGO Dashboard</h1>

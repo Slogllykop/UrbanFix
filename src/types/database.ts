@@ -13,7 +13,8 @@ export type Json =
 export type UserRole = "user" | "ngo" | "admin";
 export type AuthType = "oauth" | "email";
 export type ApplicationStatus = "pending" | "approved" | "rejected";
-export type IssueStatus = "pending" | "verified" | "addressed";
+export type IssueStatus = "pending" | "verified" | "addressed" | "rejected";
+export type IssueCategory = "pothole" | "garbage" | "street_lamp";
 export type VoteType = "upvote" | "downvote";
 
 export interface Database {
@@ -27,7 +28,7 @@ export interface Database {
           avatar_url: string | null;
           role: UserRole;
           auth_type: AuthType;
-          last_issue_date: string | null;
+          last_issue_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -38,7 +39,7 @@ export interface Database {
           avatar_url?: string | null;
           role?: UserRole;
           auth_type: AuthType;
-          last_issue_date?: string | null;
+          last_issue_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -49,7 +50,7 @@ export interface Database {
           avatar_url?: string | null;
           role?: UserRole;
           auth_type?: AuthType;
-          last_issue_date?: string | null;
+          last_issue_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -140,12 +141,14 @@ export interface Database {
           title: string;
           description: string | null;
           image_url: string;
+          category: IssueCategory | null;
           latitude: number;
           longitude: number;
           address: string | null;
           status: IssueStatus;
           ai_verified: boolean;
           priority_score: number;
+          upvotes_count: number;
           users_reported: number;
           created_at: string;
           updated_at: string;
@@ -157,12 +160,14 @@ export interface Database {
           title: string;
           description?: string | null;
           image_url: string;
+          category?: IssueCategory | null;
           latitude: number;
           longitude: number;
           address?: string | null;
           status?: IssueStatus;
           ai_verified?: boolean;
           priority_score?: number;
+          upvotes_count?: number;
           users_reported?: number;
           created_at?: string;
           updated_at?: string;
@@ -174,12 +179,14 @@ export interface Database {
           title?: string;
           description?: string | null;
           image_url?: string;
+          category?: IssueCategory | null;
           latitude?: number;
           longitude?: number;
           address?: string | null;
           status?: IssueStatus;
           ai_verified?: boolean;
           priority_score?: number;
+          upvotes_count?: number;
           users_reported?: number;
           created_at?: string;
           updated_at?: string;
@@ -243,6 +250,7 @@ export interface Database {
           lng: number;
           radius_meters?: number;
           days_back?: number;
+          issue_category?: string;
         };
         Returns: {
           issue_id: string;

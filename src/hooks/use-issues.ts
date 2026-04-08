@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Issue, VoteType } from "@/types/database";
+import type { Issue, IssueStatus, VoteType } from "@/types/database";
 
 interface UseIssuesOptions {
-  status?: "all" | "pending" | "verified" | "addressed";
+  status?: "all" | "feed" | IssueStatus;
   limit?: number;
 }
 
 export function useIssues(options: UseIssuesOptions = {}) {
-  const { status = "verified", limit = 50 } = options;
+  const { status = "feed", limit = 50 } = options;
   const [issues, setIssues] = useState<Issue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -27,7 +27,9 @@ export function useIssues(options: UseIssuesOptions = {}) {
         .order("priority_score", { ascending: false })
         .limit(limit);
 
-      if (status !== "all") {
+      if (status === "feed") {
+        query = query.in("status", ["pending", "verified"]);
+      } else if (status !== "all") {
         query = query.eq("status", status);
       }
 
@@ -101,7 +103,8 @@ export function useIssue(id: string) {
       try {
         const { error: updateError } = await supabase
           .from("issues")
-          .update(updates)
+          // @ts-ignore
+          .update(updates as any)
           .eq("id", id);
 
         if (updateError) {
@@ -148,7 +151,7 @@ export function useUserVotes(userId: string | undefined) {
         }
 
         const voteMap: Record<string, VoteType> = {};
-        for (const vote of data || []) {
+        for (const vote of (data as any[]) || []) {
           voteMap[vote.issue_id] = vote.vote_type;
         }
         setVotes(voteMap);
@@ -171,11 +174,9 @@ export function useUserVotes(userId: string | undefined) {
       try {
         if (currentVote === voteType) {
           // Remove vote
-          await supabase
-            .from("issue_votes")
-            .delete()
-            .eq("issue_id", issueId)
-            .eq("user_id", userId);
+          const query = supabase.from("issue_votes");
+          // @ts-ignore: TS issue_votes
+          await query.delete().eq("issue_id", issueId).eq("user_id", userId);
 
           setVotes((prev) => {
             const next = { ...prev };
@@ -184,8 +185,8 @@ export function useUserVotes(userId: string | undefined) {
           });
         } else if (currentVote) {
           // Update vote
-          await supabase
-            .from("issue_votes")
+          const query = supabase.from("issue_votes");
+          await (query as any)
             .update({ vote_type: voteType })
             .eq("issue_id", issueId)
             .eq("user_id", userId);
@@ -193,7 +194,8 @@ export function useUserVotes(userId: string | undefined) {
           setVotes((prev) => ({ ...prev, [issueId]: voteType }));
         } else {
           // Insert new vote
-          await supabase.from("issue_votes").insert({
+          const query = supabase.from("issue_votes");
+          await (query as any).insert({
             issue_id: issueId,
             user_id: userId,
             vote_type: voteType,

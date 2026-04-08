@@ -4,6 +4,7 @@ import {
   IconCamera,
   IconHome,
   IconLayoutDashboard,
+  IconShieldLock,
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -22,6 +23,9 @@ export function MobileNav() {
       : []),
     ...(role === "ngo" || role === "admin"
       ? [{ href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard }]
+      : []),
+    ...(role === "admin"
+      ? [{ href: "/admin", label: "Admin", icon: IconShieldLock }]
       : []),
     { href: "/profile", label: "Profile", icon: IconUser },
   ];

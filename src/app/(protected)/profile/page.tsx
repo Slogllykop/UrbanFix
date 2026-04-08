@@ -2,12 +2,14 @@
 
 import {
   IconCalendar,
+  IconClipboardList,
   IconClock,
   IconLogout,
   IconMail,
   IconShield,
   IconUser,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -194,7 +196,7 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-              {user.last_issue_date && (
+              {user.last_issue_at && (
                 <div className="space-y-2">
                   <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
                     Last Activity
@@ -202,15 +204,23 @@ export default function ProfilePage() {
                   <div className="relative group">
                     <IconClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                     <Input
-                      value={new Date(
-                        user.last_issue_date,
-                      ).toLocaleDateString()}
+                      value={new Date(user.last_issue_at).toLocaleDateString()}
                       readOnly
                       className="pl-9 bg-muted/30 font-medium text-sm"
                     />
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Link to reports */}
+            <div className="pt-2">
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/profile/reports">
+                  <IconClipboardList className="mr-2 h-4 w-4 text-primary" />
+                  View My Reports
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -98,6 +98,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted border border-border">
         {/* Captured image preview */}
         {capturedImage && state === "captured" ? (
+          // biome-ignore lint/performance/noImgElement: We need to render a blob string
           <img
             src={capturedImage}
             alt="Captured"
@@ -105,17 +106,16 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
           />
         ) : (
           /* Idle state */
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-4 hover:bg-muted/50 transition-colors cursor-pointer"
+          <button
+            type="button"
+            className="absolute inset-0 flex flex-col items-center justify-center w-full h-full gap-4 hover:bg-muted/50 transition-colors cursor-pointer border-none bg-transparent"
             onClick={openCamera}
           >
             <div className="rounded-full bg-muted-foreground/10 p-6">
               <IconCamera className="h-12 w-12 text-muted-foreground z-10" />
             </div>
-            <Button variant="ghost" className="pointer-events-none">
-              Tap to Take Photo
-            </Button>
-          </div>
+            <span className="font-medium">Tap to capture photo</span>
+          </button>
         )}
 
         {/* Hidden canvas for image processing */}

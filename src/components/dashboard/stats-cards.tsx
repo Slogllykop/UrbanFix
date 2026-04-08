@@ -5,6 +5,7 @@ import {
   IconClipboardCheck,
   IconClipboardList,
   IconTrendingUp,
+  IconX,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ interface StatsCardsProps {
     pending: number;
     verified: number;
     addressed: number;
+    rejected: number;
   };
 }
 
@@ -48,10 +50,17 @@ export function StatsCards({ stats }: StatsCardsProps) {
       color: "text-green-500",
       bgColor: "bg-green-500/10",
     },
+    {
+      title: "Rejected",
+      value: stats.rejected,
+      icon: IconX,
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
+    },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => (
         <Card key={card.title}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

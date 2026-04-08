@@ -1,11 +1,21 @@
 "use client";
 
-import { IconCheck, IconExternalLink, IconMapPin } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconExternalLink,
+  IconMapPin,
+} from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ISSUE_STATUS_CONFIG } from "@/lib/constants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ISSUE_CATEGORIES, ISSUE_STATUS_CONFIG } from "@/lib/constants";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { Issue, IssueStatus } from "@/types/database";
 import type { IssueFilters } from "./status-filter";
@@ -67,6 +77,7 @@ export function IssueTable({
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -131,11 +142,23 @@ export function IssueTable({
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium truncate max-w-[200px]">
-                          {issue.title}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate max-w-[200px]">
+                            {issue.title}
+                          </p>
+                          {issue.category && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-4 px-1.5 py-0"
+                            >
+                              {ISSUE_CATEGORIES.find(
+                                (c) => c.value === issue.category,
+                              )?.label || issue.category}
+                            </Badge>
+                          )}
+                        </div>
                         {issue.users_reported > 1 && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {issue.users_reported} reports
                           </p>
                         )}
@@ -195,16 +218,43 @@ export function IssueTable({
                           <span className="sr-only">View</span>
                         </Link>
                       </Button>
-                      {issue.status === "verified" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onStatusChange(issue.id, "addressed")}
-                        >
-                          <IconCheck className="h-4 w-4 mr-1" />
-                          Mark Done
-                        </Button>
-                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="hidden sm:flex"
+                          >
+                            Update Status
+                            <IconChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => onStatusChange(issue.id, "verified")}
+                          >
+                            Mark Verified
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              onStatusChange(issue.id, "addressed")
+                            }
+                          >
+                            Mark Addressed
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onStatusChange(issue.id, "rejected")}
+                            className="text-red-500"
+                          >
+                            Mark Rejected
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onStatusChange(issue.id, "pending")}
+                          >
+                            Mark Pending
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </td>
                 </tr>

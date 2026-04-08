@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 | undefined) ?? null,
             role: "user",
             auth_type: authType,
-          })
+          } as any)
           .select("*")
           .single();
 
