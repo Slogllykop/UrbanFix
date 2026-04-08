@@ -103,7 +103,7 @@ export function useIssue(id: string) {
       try {
         const { error: updateError } = await supabase
           .from("issues")
-          // @ts-ignore
+          // @ts-expect-error
           .update(updates as any)
           .eq("id", id);
 
@@ -175,7 +175,7 @@ export function useUserVotes(userId: string | undefined) {
         if (currentVote === voteType) {
           // Remove vote
           const query = supabase.from("issue_votes");
-          // @ts-ignore: TS issue_votes
+          // @ts-expect-error: TS issue_votes
           await query.delete().eq("issue_id", issueId).eq("user_id", userId);
 
           setVotes((prev) => {

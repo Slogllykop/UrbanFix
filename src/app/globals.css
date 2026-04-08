@@ -41,6 +41,10 @@
   /* Vote colors */
   --upvote: #22c55e;
   --downvote: #ef4444;
+
+  /* RGB variants for alpha support */
+  --primary-rgb: 250, 250, 250;
+  --background-rgb: 9, 9, 11;
 }
 
 @theme inline {
@@ -115,6 +119,42 @@ body {
   }
 }
 
-.leaflet-control-attribution {
-  display: none;
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.premium-gradient {
+  background: radial-gradient(
+    circle at top center,
+    rgba(var(--primary-rgb), 0.1) 0%,
+    transparent 70%
+  );
+}
+
+.glow-subtle {
+  box-shadow: 0 0 20px -5px rgba(var(--primary-rgb), 0.2);
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }

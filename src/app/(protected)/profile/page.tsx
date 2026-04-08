@@ -2,6 +2,7 @@
 
 import {
   IconCalendar,
+  IconChevronRight,
   IconClipboardList,
   IconClock,
   IconLogout,
@@ -14,18 +15,46 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { useAuth, useUser } from "@/providers/auth-provider";
+
+/**
+ * InfoItem Component
+ * A premium-styled row for displaying user information
+ */
+const InfoItem = ({
+  icon: Icon,
+  label,
+  value,
+  className,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      "group flex items-center justify-between p-4 rounded-2xl glass-card transition-all hover:bg-white/[0.05]",
+      className,
+    )}
+  >
+    <div className="flex items-center gap-4">
+      <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">
+          {label}
+        </span>
+        <span className="text-sm font-semibold tracking-tight">{value}</span>
+      </div>
+    </div>
+  </div>
+);
 
 export default function ProfilePage() {
   const { user, isLoading } = useUser();
@@ -49,17 +78,19 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-md mx-auto p-4 space-y-8 pt-10">
-        <div className="flex flex-col items-center space-y-4">
-          <Skeleton className="h-24 w-24 rounded-full" />
-          <div className="space-y-2 w-full flex flex-col items-center">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
+      <div className="container max-w-md mx-auto p-6 space-y-8 pt-12">
+        <div className="flex flex-col items-center space-y-6">
+          <Skeleton className="h-28 w-28 rounded-full" />
+          <div className="space-y-3 w-full flex flex-col items-center">
+            <Skeleton className="h-8 w-48 rounded-lg" />
+            <Skeleton className="h-4 w-32 rounded-md" />
           </div>
         </div>
         <div className="space-y-4">
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-14 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -85,160 +116,150 @@ export default function ProfilePage() {
     admin: "Administrator",
   };
 
+  const memberSince = new Date(user.created_at).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const lastActivity = user.last_issue_at
+    ? new Date(user.last_issue_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "No activity yet";
+
   return (
-    <div className="container max-w-md mx-auto p-4 space-y-6 pb-24 md:pb-8">
-      {/* Header Profile Section */}
-      <div className="flex flex-col items-center space-y-4 pt-4 md:pt-8 w-full">
-        <div className="relative">
-          {/* Background decoration */}
-          <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary to-primary/50 opacity-30 blur-sm"></div>
-          <Avatar className="h-24 w-24 border-4 border-background relative shadow-xl">
-            <AvatarImage
-              src={user.avatar_url || ""}
-              alt={user.full_name || "User"}
-              className="object-cover"
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-zinc-900/50 via-background to-background">
+      <div className="container max-w-md mx-auto p-6 space-y-8 pb-32 pt-10 animate-in fade-in duration-700">
+        {/* Header Profile Section */}
+        <div className="flex flex-col items-center text-center space-y-5 pt-4">
+          <div className="relative group">
+            {/* Multi-layered glow effects */}
+            <div className="absolute -inset-4 rounded-full bg-primary/20 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-1000"></div>
+            <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-primary/40 to-primary/10 opacity-50 blur-md animate-pulse"></div>
+
+            <Avatar className="h-28 w-28 border-2 border-white/20 relative shadow-2xl animate-float">
+              <AvatarImage
+                src={user.avatar_url || ""}
+                alt={user.full_name || "User"}
+                className="object-cover"
+              />
+              <AvatarFallback className="text-3xl font-extrabold bg-zinc-800 text-white">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="absolute -bottom-1 -right-1">
+              <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-lg border-2 border-background">
+                <IconShield className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+              {user.full_name || "UrbanFix User"}
+            </h1>
+            <p className="text-sm text-muted-foreground font-medium tracking-wide">
+              {user.email}
+            </p>
+          </div>
+
+          <Badge
+            variant="outline"
+            className="px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] bg-white/5 border-white/10 backdrop-blur-sm"
+          >
+            {UserRoleLabel[user.role] || user.role}
+          </Badge>
+        </div>
+
+        {/* Info Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+              Personal Details
+            </h2>
+          </div>
+
+          <div className="grid gap-3 slide-in-from-bottom-2 duration-500 fill-mode-forwards">
+            <InfoItem
+              icon={IconMail}
+              label="Email Address"
+              value={user.email}
             />
-            <AvatarFallback className="text-2xl font-bold bg-muted text-muted-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+            <InfoItem
+              icon={IconUser}
+              label="Full Name"
+              value={user.full_name || "Not set"}
+            />
+            <InfoItem
+              icon={IconShield}
+              label="Account Access"
+              value={UserRoleLabel[user.role] || user.role.toUpperCase()}
+            />
+          </div>
         </div>
 
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {user.full_name || "UrbanFix User"}
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            {user.email}
-          </p>
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="glass-card p-4 rounded-2xl flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-primary/60 mb-1">
+              <IconCalendar className="h-3.5 w-3.5" />
+              <span className="text-[9px] font-bold uppercase tracking-widest">
+                Joined
+              </span>
+            </div>
+            <span className="text-sm font-bold">{memberSince}</span>
+          </div>
+
+          <div className="glass-card p-4 rounded-2xl flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-primary/60 mb-1">
+              <IconClock className="h-3.5 w-3.5" />
+              <span className="text-[9px] font-bold uppercase tracking-widest">
+                Activity
+              </span>
+            </div>
+            <span className="text-sm font-bold">{lastActivity}</span>
+          </div>
         </div>
 
-        <div className="flex gap-2 text-xs font-semibold px-3 py-1 bg-primary/10 text-primary rounded-full uppercase tracking-wider">
-          {UserRoleLabel[user.role] || user.role}
-        </div>
-      </div>
-
-      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Card className="border-border/50 shadow-sm overflow-hidden">
-          <CardHeader className="bg-muted/30 pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <IconUser className="h-5 w-5 text-primary" />
-              Personal Information
-            </CardTitle>
-            <CardDescription>Your account details and status</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 pt-6">
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-xs uppercase text-muted-foreground font-semibold tracking-wider"
-              >
-                Email Address
-              </Label>
-              <div className="relative group">
-                <IconMail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                <Input
-                  id="email"
-                  value={user.email}
-                  readOnly
-                  className="pl-9 bg-muted/30 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="fullname"
-                className="text-xs uppercase text-muted-foreground font-semibold tracking-wider"
-              >
-                Full Name
-              </Label>
-              <div className="relative group">
-                <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                <Input
-                  id="fullname"
-                  value={user.full_name || "Not set"}
-                  readOnly
-                  className="pl-9 bg-muted/30 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="role"
-                className="text-xs uppercase text-muted-foreground font-semibold tracking-wider"
-              >
-                Account Role
-              </Label>
-              <div className="relative group">
-                <IconShield className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                <Input
-                  id="role"
-                  value={UserRoleLabel[user.role] || user.role.toUpperCase()}
-                  readOnly
-                  className="pl-9 bg-muted/30 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
-                  Member Since
-                </Label>
-                <div className="relative group">
-                  <IconCalendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                  <Input
-                    value={new Date(user.created_at).toLocaleDateString()}
-                    readOnly
-                    className="pl-9 bg-muted/30 font-medium text-sm"
-                  />
-                </div>
-              </div>
-              {user.last_issue_at && (
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
-                    Last Activity
-                  </Label>
-                  <div className="relative group">
-                    <IconClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                    <Input
-                      value={new Date(user.last_issue_at).toLocaleDateString()}
-                      readOnly
-                      className="pl-9 bg-muted/30 font-medium text-sm"
-                    />
+        {/* Main Actions */}
+        <div className="space-y-3 pt-2">
+          <Button
+            className="w-full h-14 rounded-2xl text-md font-bold shadow-xl bg-white text-black hover:bg-white/90 transition-all group overflow-hidden relative"
+            asChild
+          >
+            <Link href="/profile/reports">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <span className="relative flex items-center justify-between w-full px-2">
+                <span className="flex items-center gap-3">
+                  <div className="bg-black/10 p-2 rounded-xl text-black">
+                    <IconClipboardList className="h-5 w-5" />
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Link to reports */}
-            <div className="pt-2">
-              <Button variant="outline" className="w-full" asChild>
-                <Link href="/profile/reports">
-                  <IconClipboardList className="mr-2 h-4 w-4 text-primary" />
                   View My Reports
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                </span>
+                <IconChevronRight className="h-5 w-5 opacity-50 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Link>
+          </Button>
 
-        {/* Account Actions */}
-        <div className="pt-2">
           <Button
             variant="destructive"
-            className="w-full h-12 text-md font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full h-14 rounded-2xl text-md font-bold shadow-lg shadow-destructive/20 hover:shadow-destructive/40 transition-all active:scale-[0.98] mt-2"
             onClick={handleSignOut}
             disabled={isSigningOut}
           >
             <IconLogout className="mr-2 h-5 w-5" />
             {isSigningOut ? "Signing out..." : "Sign Out"}
           </Button>
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Version 1.0.0 • UrbanFix
-          </p>
+
+          <div className="flex flex-col items-center space-y-2 pt-6">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary/20"></div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40">
+              UrbanFix • Build 1.0.4
+            </p>
+          </div>
         </div>
       </div>
     </div>

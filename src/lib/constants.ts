@@ -8,8 +8,8 @@ export const DUPLICATE_WINDOW_DAYS = Number(
   process.env.NEXT_PUBLIC_DUPLICATE_WINDOW_DAYS || 1,
 );
 
-// Rate limiting — 3-hour cooldown between reports
-export const REPORT_COOLDOWN_HOURS = 3;
+// Rate limiting — 2-hour cooldown between reports
+export const REPORT_COOLDOWN_HOURS = 2;
 
 // Image constraints
 export const MAX_IMAGE_SIZE_MB = 5;

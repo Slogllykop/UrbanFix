@@ -36,7 +36,7 @@ Authentication is managed via `src/providers/auth-provider.tsx` and Supabase Aut
 
 ### The Issue Submission Pipeline (`/report/actions.ts`)
 When a user submits an issue using the mobile portal, a Server Action handles a complex set of sequential rules:
-1. **Cooldown Check:** Queries `users.last_issue_at` to enforce a 3-hour cooldown period between issue submissions.
+1. **Cooldown Check:** Queries `users.last_issue_at` to enforce a 2-hour cooldown period between issue submissions.
 2. **Duplicate Detection:** Uses a Supabase Postgres RPC function `find_nearby_issues` (checks within a 50-meter radius & 24-hour window) to verify if the issue was already reported. If a duplicate is found, it increments the `users_reported` counter on the existing issue instead of creating a new one.
 3. **Storage:** The image captured from the camera is securely uploaded to a public Supabase Storage bucket.
 4. **Issue Creation:** A new record is created in the `issues` table and mapped to the user in `issue_reports`.
