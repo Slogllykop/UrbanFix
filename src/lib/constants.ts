@@ -5,11 +5,11 @@ export const DUPLICATE_RADIUS_METERS = Number(
   process.env.NEXT_PUBLIC_DUPLICATE_RADIUS_METERS || 50,
 );
 export const DUPLICATE_WINDOW_DAYS = Number(
-  process.env.NEXT_PUBLIC_DUPLICATE_WINDOW_DAYS || 7,
+  process.env.NEXT_PUBLIC_DUPLICATE_WINDOW_DAYS || 1,
 );
 
-// Rate limiting
-export const MAX_ISSUES_PER_DAY = 1;
+// Rate limiting — 3-hour cooldown between reports
+export const REPORT_COOLDOWN_HOURS = 3;
 
 // Image constraints
 export const MAX_IMAGE_SIZE_MB = 5;
@@ -40,6 +40,11 @@ export const ISSUE_STATUS_CONFIG = {
     color: "bg-green-500",
     textColor: "text-green-500",
   },
+  rejected: {
+    label: "Rejected",
+    color: "bg-red-500",
+    textColor: "text-red-500",
+  },
 } as const;
 
 // User role labels
@@ -62,8 +67,16 @@ export const NAV_ITEMS = {
   admin: [
     { href: "/", label: "Home", icon: "home" },
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/admin", label: "Admin", icon: "settings" },
   ],
 } as const;
+
+// Issue categories
+export const ISSUE_CATEGORIES = [
+  { value: "pothole", label: "Pothole", icon: "road" },
+  { value: "garbage", label: "Garbage", icon: "trash" },
+  { value: "street_lamp", label: "Street Lamp", icon: "bulb" },
+] as const;
 
 // API routes
 export const API_ROUTES = {

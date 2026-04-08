@@ -3,6 +3,7 @@
 import { IconDots, IconMapPin, IconShare } from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
 import { VoteButtons } from "@/components/issues/vote-buttons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ISSUE_STATUS_CONFIG } from "@/lib/constants";
+import { ISSUE_CATEGORIES, ISSUE_STATUS_CONFIG } from "@/lib/constants";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { Issue, VoteType } from "@/types/database";
 
@@ -29,33 +30,44 @@ export function SocialFeedCard({
   userVote,
   onVote,
 }: SocialFeedCardProps) {
+  const handleShare = () => {
+    const url = `${window.location.origin}/issue/${issue.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  };
+
   const statusConfig = ISSUE_STATUS_CONFIG[issue.status];
+  const categoryLabel =
+    ISSUE_CATEGORIES.find((c) => c.value === issue.category)?.label ||
+    issue.category;
 
-  // Dummy user data since we don't have it in the issue object fully yet
-  // In a real app, you'd fetch this or include it in the join
-  const creatorId = issue.created_by || "anonymous";
-  const userInitial = creatorId.charAt(0).toUpperCase();
-  const userName = issue.created_by
-    ? `User ${issue.created_by.substring(0, 4)}`
-    : "Anonymous User";
-
-  const upvotes = Math.max(0, issue.priority_score);
-  const downvotes = Math.max(0, -issue.priority_score);
+  const upvotes = issue.upvotes_count;
+  const downvotes = Math.max(0, upvotes - issue.priority_score);
 
   return (
-    <Card className="border-0 shadow-none sm:border sm:shadow-sm">
+    <Card className="border-0 shadow-none sm:border sm:shadow-sm gap-0">
       {/* Header */}
-      <CardHeader className="flex flex-row items-center space-y-0 p-4">
+      <CardHeader className="flex flex-row items-center space-y-0 px-4 py-3">
         <div className="flex items-center gap-3">
-          {/* User Avatar - Placeholder since we don't have user profiles joined yet */}
           <Avatar className="h-10 w-10">
             <AvatarImage
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${creatorId}`}
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${issue.created_by || "anon"}`}
             />
-            <AvatarFallback>{userInitial}</AvatarFallback>
+            <AvatarFallback>U</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <p className="text-sm font-semibold">{userName}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">
+                {issue.users_reported > 1
+                  ? `${issue.users_reported} reporters`
+                  : "Reported"}
+              </p>
+              {categoryLabel && (
+                <Badge variant="outline" className="text-xs">
+                  {categoryLabel}
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center text-xs text-muted-foreground">
               {issue.address && (
                 <span className="flex items-center gap-1 max-w-[200px] truncate mr-2">
@@ -76,7 +88,7 @@ export function SocialFeedCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Report</DropdownMenuItem>
-              <DropdownMenuItem>Share</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare}>Share</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -106,7 +118,7 @@ export function SocialFeedCard({
       </div>
 
       {/* Actions Bar */}
-      <div className="p-4 pb-2 flex items-center justify-between">
+      <div className="px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <VoteButtons
             issueId={issue.id}
@@ -118,16 +130,15 @@ export function SocialFeedCard({
             orientation="horizontal"
           />
         </div>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" onClick={handleShare}>
           <IconShare className="h-5 w-5" />
         </Button>
       </div>
 
       {/* Caption & Content */}
-      <CardContent className="p-4 pt-0">
-        <div className="space-y-2">
+      <CardContent className="px-4 pb-4 pt-0">
+        <div className="space-y-1">
           <div>
-            <p className="font-semibold text-sm inline mr-2">{userName}</p>
             <span className="text-sm">{issue.title}</span>
           </div>
           {issue.description && (
@@ -139,7 +150,7 @@ export function SocialFeedCard({
           {/* View Details Link */}
           <Link
             href={`/issue/${issue.id}`}
-            className="block mt-2 text-sm text-muted-foreground hover:text-primary"
+            className="block mt-1 text-sm text-muted-foreground hover:text-primary"
           >
             View all details
           </Link>

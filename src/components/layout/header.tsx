@@ -6,6 +6,7 @@ import {
   IconLayoutDashboard,
   IconLogout,
   IconMenu2,
+  IconShieldLock,
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -20,7 +21,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth, useUserRole } from "@/providers/auth-provider";
 
@@ -44,6 +52,9 @@ export function Header() {
       : []),
     ...(role === "ngo" || role === "admin"
       ? [{ href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard }]
+      : []),
+    ...(role === "admin"
+      ? [{ href: "/admin", label: "Admin", icon: IconShieldLock }]
       : []),
   ];
 
@@ -144,6 +155,12 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+                <SheetDescription>
+                  Access different sections of the UrbanFix platform.
+                </SheetDescription>
+              </SheetHeader>
               <nav className="flex flex-col space-y-4 mt-8">
                 {navItems.map((item) => (
                   <Link

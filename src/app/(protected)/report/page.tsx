@@ -2,14 +2,34 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { submitIssue } from "@/app/(protected)/report/actions";
 import { CameraCapture } from "@/components/report/camera-capture";
-import { LocationPicker } from "@/components/report/location-picker";
+
+const LocationPicker = dynamic(
+  () =>
+    import("@/components/report/location-picker").then(
+      (mod) => mod.LocationPicker,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[clamp(320px,52svh,560px)] rounded-lg bg-muted flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading map...</p>
+        </div>
+      </div>
+    ),
+  },
+);
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,9 +42,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isMobileDevice } from "@/lib/utils";
 
 const reportSchema = z.object({
+  issueType: z.enum(["pothole", "street_lamp", "garbage"], {
+    message: "Please select an issue type",
+  }),
   title: z
     .string()
     .min(5, "Title must be at least 5 characters")
@@ -56,11 +80,13 @@ export default function ReportPage() {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isMiddlewareMobileRequired = searchParams.get("mobile_required") === "1";
+  const isMiddlewareMobileRequired =
+    searchParams.get("mobile_required") === "1";
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
+      issueType: undefined,
       title: "",
       description: "",
     },
@@ -100,7 +126,7 @@ export default function ReportPage() {
   };
 
   // Handle form submission
-  const onSubmit = async (_values: ReportFormValues) => {
+  const onSubmit = async (values: ReportFormValues) => {
     if (!capturedImage || !selectedLocation) {
       toast.error("Missing information");
       return;
@@ -109,12 +135,40 @@ export default function ReportPage() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Upload image to Supabase storage
-      // TODO: Create issue in database
-      // TODO: Check for duplicates using find_nearby_issues
+      // Convert blob to base64 for the Server Action
+      const arrayBuffer = await capturedImage.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          "",
+        ),
+      );
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const result = await submitIssue({
+        title: values.title,
+        description: values.description,
+        category: values.issueType,
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng,
+        imageBlob: base64,
+        imageMimeType: capturedImage.type || "image/jpeg",
+      });
+
+      if (!result.success) {
+        toast.error("Submission failed", {
+          description: result.error,
+        });
+        return;
+      }
+
+      if (result.duplicateIssueId) {
+        toast.info("Similar issue already reported nearby", {
+          description:
+            "Your report has been added to the existing issue to increase its priority.",
+        });
+        router.push(`/issue/${result.duplicateIssueId}`);
+        return;
+      }
 
       toast.success("Issue reported!", {
         description: "Your report has been submitted for verification.",
@@ -317,6 +371,28 @@ export default function ReportPage() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
+                <FormField
+                  control={form.control}
+                  name="issueType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Issue Type</FormLabel>
+                      <FormControl>
+                        <Select {...field} disabled={isSubmitting}>
+                          <option value="">Select an issue type</option>
+                          <option value="pothole">Pothole</option>
+                          <option value="street_lamp">Street Lamp</option>
+                          <option value="garbage">Garbage</option>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Choose the type of issue you're reporting
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="title"

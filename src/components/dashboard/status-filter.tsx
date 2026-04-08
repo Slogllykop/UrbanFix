@@ -38,11 +38,12 @@ export function StatusFilter({ filters, onFiltersChange }: StatusFilterProps) {
         onValueChange={handleStatusChange}
         className="w-full md:w-auto"
       >
-        <TabsList className="grid w-full grid-cols-4 md:w-auto md:grid-cols-none">
+        <TabsList className="grid w-full grid-cols-5 md:w-auto md:grid-cols-none">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="verified">Verified</TabsTrigger>
           <TabsTrigger value="addressed">Addressed</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
         </TabsList>
       </Tabs>
 

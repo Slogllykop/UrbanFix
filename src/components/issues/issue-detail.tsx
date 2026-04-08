@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ISSUE_STATUS_CONFIG } from "@/lib/constants";
+import { ISSUE_CATEGORIES, ISSUE_STATUS_CONFIG } from "@/lib/constants";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { Issue, User, VoteType } from "@/types/database";
 
@@ -38,8 +38,11 @@ export function IssueDetail({
   canMarkAddressed = false,
 }: IssueDetailProps) {
   const statusConfig = ISSUE_STATUS_CONFIG[issue.status];
-  const upvotes = Math.max(0, issue.priority_score);
-  const downvotes = Math.max(0, -issue.priority_score);
+  const upvotes = issue.upvotes_count || 0;
+  const downvotes = Math.max(0, upvotes - issue.priority_score);
+  const categoryLabel =
+    ISSUE_CATEGORIES.find((c) => c.value === issue.category)?.label ||
+    issue.category;
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,9 +79,15 @@ export function IssueDetail({
           />
         </div>
 
-        {/* Details */}
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{issue.title}</h1>
+          <div className="flex flex-col gap-2">
+            {categoryLabel && (
+              <Badge variant="outline" className="w-fit">
+                {categoryLabel}
+              </Badge>
+            )}
+            <h1 className="text-2xl font-bold">{issue.title}</h1>
+          </div>
 
           {/* Meta info */}
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -176,10 +185,12 @@ export function IssueDetail({
           <CardContent>
             <div className="flex items-center gap-3">
               {creator.avatar_url ? (
+                // biome-ignore lint/performance/noImgElement: no need for optimisation
                 <img
                   src={creator.avatar_url}
                   alt={creator.full_name || "User"}
                   className="h-10 w-10 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
