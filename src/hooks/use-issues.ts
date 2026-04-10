@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Issue, IssueStatus, VoteType } from "@/types/database";
+import type {
+  Issue,
+  IssueStatus,
+  IssueUpdate,
+  VoteType,
+} from "@/types/database";
 
 interface UseIssuesOptions {
   status?: "all" | "feed" | IssueStatus;
@@ -14,7 +19,7 @@ export function useIssues(options: UseIssuesOptions = {}) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchIssues = useCallback(async () => {
     setIsLoading(true);
@@ -65,7 +70,7 @@ export function useIssue(id: string) {
   const [issue, setIssue] = useState<Issue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -97,14 +102,12 @@ export function useIssue(id: string) {
   }, [id, supabase]);
 
   const updateIssue = useCallback(
-    async (updates: Partial<Issue>) => {
+    async (updates: IssueUpdate) => {
       if (!issue) return;
-
       try {
-        const { error: updateError } = await supabase
-          .from("issues")
-          // @ts-expect-error
-          .update(updates as any)
+        // biome-ignore lint/suspicious/noExplicitAny: incomplete database types for issues table
+        const { error: updateError } = await (supabase.from("issues") as any)
+          .update(updates)
           .eq("id", id);
 
         if (updateError) {
@@ -131,7 +134,7 @@ export function useIssue(id: string) {
 export function useUserVotes(userId: string | undefined) {
   const [votes, setVotes] = useState<Record<string, VoteType>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (!userId) return;
@@ -151,6 +154,7 @@ export function useUserVotes(userId: string | undefined) {
         }
 
         const voteMap: Record<string, VoteType> = {};
+        // biome-ignore lint/suspicious/noExplicitAny: incomplete database types for issue_votes table
         for (const vote of (data as any[]) || []) {
           voteMap[vote.issue_id] = vote.vote_type;
         }
@@ -184,8 +188,8 @@ export function useUserVotes(userId: string | undefined) {
           });
         } else if (currentVote) {
           // Update vote
-          const query = supabase.from("issue_votes");
-          await (query as any)
+          // biome-ignore lint/suspicious/noExplicitAny: incomplete database types for issue_votes table
+          await (supabase.from("issue_votes") as any)
             .update({ vote_type: voteType })
             .eq("issue_id", issueId)
             .eq("user_id", userId);
@@ -193,8 +197,8 @@ export function useUserVotes(userId: string | undefined) {
           setVotes((prev) => ({ ...prev, [issueId]: voteType }));
         } else {
           // Insert new vote
-          const query = supabase.from("issue_votes");
-          await (query as any).insert({
+          // biome-ignore lint/suspicious/noExplicitAny: incomplete database types for issue_votes table
+          await (supabase.from("issue_votes") as any).insert({
             issue_id: issueId,
             user_id: userId,
             vote_type: voteType,
