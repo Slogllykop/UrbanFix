@@ -104,17 +104,20 @@ export async function submitIssue(
     };
   }
 
-  // 4. Upload image to Supabase Storage
-  const imageBytes = Uint8Array.from(atob(input.imageBlob), (c) =>
-    c.charCodeAt(0),
-  );
-  const extension = input.imageMimeType.split("/")[1] || "jpeg";
-  const filePath = `${authUser.id}/${Date.now()}.${extension}`;
+  // 4. Compress & convert image to JPEG, then upload to Supabase Storage
+  const { default: sharp } = await import("sharp");
+
+  const rawBuffer = Buffer.from(input.imageBlob, "base64");
+  const compressedBuffer = await sharp(rawBuffer)
+    .jpeg({ quality: 80 })
+    .toBuffer();
+
+  const filePath = `${authUser.id}/${Date.now()}.jpg`;
 
   const { error: uploadError } = await supabase.storage
     .from("issue-images")
-    .upload(filePath, imageBytes, {
-      contentType: input.imageMimeType,
+    .upload(filePath, compressedBuffer, {
+      contentType: "image/jpeg",
       upsert: false,
     });
 

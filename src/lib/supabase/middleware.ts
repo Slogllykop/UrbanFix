@@ -6,6 +6,7 @@ import type { Database } from "@/types/database";
 const PUBLIC_ROUTES = ["/login", "/ngo-login", "/auth/callback"];
 const USER_ONLY_ROUTES = ["/report"];
 const NGO_ONLY_ROUTES = ["/dashboard"];
+const ADMIN_ONLY_ROUTES = ["/admin"];
 const PROTECTED_ROUTES = ["/", "/issue", "/profile"];
 const MOBILE_ONLY_UPLOAD_ROUTE = "/report";
 const MOBILE_REQUIRED_QUERY = "mobile_required";
@@ -91,9 +92,15 @@ export async function updateSession(request: NextRequest) {
   const isNgoOnlyRoute = NGO_ONLY_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
+  const isAdminOnlyRoute = ADMIN_ONLY_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 
   // If no user and trying to access protected route, redirect to login
-  if (!user && (isProtectedRoute || isUserOnlyRoute || isNgoOnlyRoute)) {
+  if (
+    !user &&
+    (isProtectedRoute || isUserOnlyRoute || isNgoOnlyRoute || isAdminOnlyRoute)
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
@@ -123,6 +130,13 @@ export async function updateSession(request: NextRequest) {
     if (isUserOnlyRoute && userRole === "ngo") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    // Admin-only routes: only admin can access
+    if (isAdminOnlyRoute && userRole !== "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
       return NextResponse.redirect(url);
     }
   }

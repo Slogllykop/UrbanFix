@@ -75,7 +75,7 @@ export const NAV_ITEMS = {
 export const ISSUE_CATEGORIES = [
   { value: "pothole", label: "Pothole", icon: "road" },
   { value: "garbage", label: "Garbage", icon: "trash" },
-  { value: "street_lamp", label: "Street Lamp", icon: "bulb" },
+  { value: "water_clog", label: "Water Clogging", icon: "droplet" },
 ] as const;
 
 // API routes

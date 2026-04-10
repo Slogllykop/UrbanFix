@@ -32,12 +32,29 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
       const img = new Image();
       img.onload = () => {
         if (canvasRef.current) {
-          // Set canvas dimensions to match image
-          canvasRef.current.width = img.width;
-          canvasRef.current.height = img.height;
+          const MAX_DIM = 1280;
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate scaled dimensions to preserve aspect ratio
+          if (width > height) {
+            if (width > MAX_DIM) {
+              height *= MAX_DIM / width;
+              width = MAX_DIM;
+            }
+          } else {
+            if (height > MAX_DIM) {
+              width *= MAX_DIM / height;
+              height = MAX_DIM;
+            }
+          }
+
+          // Set canvas dimensions to the scaled size
+          canvasRef.current.width = width;
+          canvasRef.current.height = height;
 
           const ctx = canvasRef.current.getContext("2d");
-          ctx?.drawImage(img, 0, 0);
+          ctx?.drawImage(img, 0, 0, width, height);
         }
       };
       img.src = imageUrl;
@@ -54,6 +71,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
   const confirmPhoto = useCallback(() => {
     if (!canvasRef.current) return;
 
+    // Export with 0.75 quality to target 300-500KB range
     canvasRef.current.toBlob(
       (blob) => {
         if (blob) {
@@ -61,7 +79,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
         }
       },
       "image/jpeg",
-      0.9,
+      0.75,
     );
   }, [onCapture]);
 

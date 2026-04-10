@@ -2,7 +2,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconCheck,
+  IconDroplet,
+  IconRoad,
+  IconTrash,
+} from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -43,18 +50,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ISSUE_CATEGORIES } from "@/lib/constants";
-import { isMobileDevice } from "@/lib/utils";
+import { cn, isMobileDevice } from "@/lib/utils";
+
+const CATEGORY_DETAILS = {
+  pothole: { label: "Pothole", icon: IconRoad },
+  water_clog: { label: "Water Clogging", icon: IconDroplet },
+  garbage: { label: "Garbage", icon: IconTrash },
+} as const;
 
 const reportSchema = z.object({
-  issueType: z.enum(["pothole", "street_lamp", "garbage"], {
+  issueType: z.enum(["pothole", "water_clog", "garbage"], {
     message: "Please select an issue type",
   }),
   title: z
@@ -364,15 +369,7 @@ export default function ReportPage() {
               </div>
             )}
 
-            {/* Selected location */}
-            {selectedLocation && (
-              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-                <span className="font-medium">Location: </span>
-                <span className="text-muted-foreground">
-                  {`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`}
-                </span>
-              </div>
-            )}
+
 
             <Form {...form}>
               <form
@@ -386,25 +383,47 @@ export default function ReportPage() {
                     <FormItem>
                       <FormLabel>Issue Type</FormLabel>
                       <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={isSubmitting}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select an issue type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ISSUE_CATEGORIES.map((category) => (
-                              <SelectItem
-                                key={category.value}
-                                value={category.value}
+                        <div className="flex gap-4 w-full">
+                          {(
+                            Object.entries(CATEGORY_DETAILS) as [
+                              keyof typeof CATEGORY_DETAILS,
+                              (typeof CATEGORY_DETAILS)[keyof typeof CATEGORY_DETAILS],
+                            ][]
+                          ).map(([value, { label, icon: Icon }]) => {
+                            const isSelected = field.value === value;
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                disabled={isSubmitting}
+                                onClick={() => {
+                                  field.onChange(
+                                    isSelected ? undefined : value,
+                                  );
+                                }}
+                                className={cn(
+                                  "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all flex-1",
+                                  isSelected
+                                    ? "border-white bg-white/10"
+                                    : "border-border bg-background hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                )}
                               >
-                                {category.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 bg-white rounded-full p-0.5 shadow-sm">
+                                    <IconCheck
+                                      className="w-3 h-3 text-black"
+                                      stroke={3}
+                                    />
+                                  </div>
+                                )}
+                                <Icon className="w-8 h-8 mb-2" stroke={1.5} />
+                                <span className="text-xs font-medium text-center">
+                                  {label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </FormControl>
                       <FormDescription>
                         Choose the type of issue you're reporting
@@ -428,7 +447,7 @@ export default function ReportPage() {
                         />
                       </FormControl>
                       <FormDescription>
-                        E.g., "Pothole on Main Street" or "Broken streetlight"
+                        E.g., "Pothole on Main Street" or "Water clogging"
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

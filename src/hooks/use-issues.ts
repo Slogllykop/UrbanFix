@@ -175,7 +175,6 @@ export function useUserVotes(userId: string | undefined) {
         if (currentVote === voteType) {
           // Remove vote
           const query = supabase.from("issue_votes");
-          // @ts-expect-error: TS issue_votes
           await query.delete().eq("issue_id", issueId).eq("user_id", userId);
 
           setVotes((prev) => {

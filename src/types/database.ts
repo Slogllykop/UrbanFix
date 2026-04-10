@@ -14,7 +14,7 @@ export type UserRole = "user" | "ngo" | "admin";
 export type AuthType = "oauth" | "email";
 export type ApplicationStatus = "pending" | "approved" | "rejected";
 export type IssueStatus = "pending" | "verified" | "addressed" | "rejected";
-export type IssueCategory = "pothole" | "garbage" | "street_lamp";
+export type IssueCategory = "pothole" | "garbage" | "water_clog";
 export type VoteType = "upvote" | "downvote";
 
 export interface Database {

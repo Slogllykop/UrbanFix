@@ -35,13 +35,14 @@ export function IssueCard({
     <Card className="overflow-hidden transition-shadow hover:shadow-lg group">
       <Link href={`/issue/${issue.id}`} className="block">
         {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        <div className="relative w-full overflow-hidden bg-muted">
           <Image
             src={issue.image_url}
             alt={issue.title}
-            fill
-            className="object-cover transition-transform group-hover:scale-105"
+            width={0}
+            height={0}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="w-full h-auto object-cover transition-transform group-hover:scale-105"
           />
           {/* Status badge */}
           {showStatus && (

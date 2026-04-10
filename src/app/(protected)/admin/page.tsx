@@ -2,7 +2,7 @@
 
 import { IconShield, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,7 @@ import { useUserRole } from "@/providers/auth-provider";
 export default function AdminPage() {
   const router = useRouter();
   const role = useUserRole();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [adminEmails, setAdminEmails] = useState<{ email: string }[]>([]);
   const [ngos, setNgos] = useState<

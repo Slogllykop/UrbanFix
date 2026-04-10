@@ -45,7 +45,7 @@ export function SocialFeedCard({
   const downvotes = Math.max(0, upvotes - issue.priority_score);
 
   return (
-    <Card className="border-0 shadow-none sm:border sm:shadow-sm gap-0">
+    <Card className="rounded-none border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm sm:overflow-hidden gap-0">
       {/* Header */}
       <CardHeader className="flex flex-row items-center space-y-0 px-4 py-3">
         <div className="flex items-center gap-3">
@@ -95,13 +95,14 @@ export function SocialFeedCard({
       </CardHeader>
 
       {/* Image */}
-      <div className="relative aspect-square w-full bg-muted sm:aspect-4/3">
+      <div className="relative w-full bg-black/5 flex items-center justify-center">
         <Image
           src={issue.image_url}
           alt={issue.title}
-          fill
-          className="object-cover"
+          width={0}
+          height={0}
           sizes="(max-width: 640px) 100vw, 600px"
+          className="w-full h-auto max-h-[85vh] object-contain"
           priority
         />
         {/* Status Badge Overlay */}
